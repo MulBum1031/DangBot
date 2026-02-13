@@ -1,3 +1,20 @@
+# 1. 맨 윗부분에 추가
+from flask import Flask
+from threading import Thread
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "댕이가 살아있어요!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
 import os
 import discord
 from discord.ext import commands
