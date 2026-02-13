@@ -1,8 +1,10 @@
-# 1. 맨 윗부분에 추가
+import discord
+from discord.ext import commands
 import os
 from flask import Flask
 from threading import Thread
 
+# 1. Render 무료 플랜 유지를 위한 가짜 웹 서버 설정
 app = Flask('')
 
 @app.route('/')
@@ -10,123 +12,52 @@ def home():
     return "댕이가 살아있어요!"
 
 def run():
+    # Render는 기본적으로 8080 혹은 설정된 PORT 번호를 확인합니다.
     app.run(host='0.0.0.0', port=8080)
 
 def keep_alive():
     t = Thread(target=run)
+    t.daemon = True # 메인 프로그램 종료 시 함께 종료되도록 설정
     t.start()
 
-
-import discord
-from discord.ext import commands
-from discord.ui import Button, View
-import json
-
-
-# 데이터 저장 파일 설정
-DATA_FILE = "users.json"
-
-def load_data():
-    if os.path.exists(DATA_FILE):
-        with open(DATA_FILE, "r", encoding="utf-8") as f:
-            try:
-                return json.load(f)
-            except json.JSONDecodeError:
-                return {}
-    return {}
-
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-# 봇 설정
+# 2. 디스코드 봇 설정 (인텐트 필수 설정)
+# 최근 디스코드 업데이트로 인해 Intents 설정이 없으면 봇이 켜지지 않거나 메시지를 못 읽습니다.
 intents = discord.Intents.default()
-intents.message_content = True
+intents.message_content = True  # 채팅 내용을 읽을 수 있는 권한
+intents.members = True          # 서버 멤버 정보를 읽을 수 있는 권한
+
 bot = commands.Bot(command_prefix="!", intents=intents)
-
-# --- 버튼 뷰 클래스 ---
-class BadWordView(View):
-    def __init__(self, target_name):
-        super().__init__(timeout=None)
-        self.target_name = target_name
-
-    async def update_score(self, interaction, amount):
-        data = load_data()
-        if self.target_name in data:
-            data[self.target_name] += amount
-            if data[self.target_name] < 0: data[self.target_name] = 0
-            save_data(data)
-            await interaction.response.send_message(f"'{self.target_name}'님의 욕 횟수가 {amount}만큼 변경되었습니다.", ephemeral=True)
-        else:
-            await interaction.response.send_message("등록되지 않은 사용자입니다.", ephemeral=True)
-
-    @discord.ui.button(label="+1", style=discord.ButtonStyle.danger)
-    async def plus_one(self, interaction: discord.Interaction, button: Button):
-        await self.update_score(interaction, 1)
-
-    @discord.ui.button(label="+5", style=discord.ButtonStyle.secondary)
-    async def plus_five(self, interaction: discord.Interaction, button: Button):
-        await self.update_score(interaction, 5)
-
-    @discord.ui.button(label="-1", style=discord.ButtonStyle.success)
-    async def minus_one(self, interaction: discord.Interaction, button: Button):
-        await self.update_score(interaction, -1)
-
-# --- 봇 명령어 ---
 
 @bot.event
 async def on_ready():
-    print(f'봇 이름: {bot.user.name} (댕이) 연결 완료!')
+    print(f'--- 연결 성공 ---')
+    print(f'봇 이름: {bot.user.name}')
+    print(f'ID: {bot.user.id}')
+    print(f'댕이 간식줘')
+    print(f'------------------')
 
-@bot.command(name="등록")
-async def register(ctx, name: str):
-    data = load_data()
-    if name in data:
-        await ctx.send(f"이미 '{name}'님은 등록되어 있습니다.")
-    else:
-        data[name] = 0
-        save_data(data)
-        await ctx.send(f"'{name}'님이 댕이의 명단에 등록되었습니다!")
+@bot.command()
+async def 등록(ctx, *, name: str):
+    await ctx.send(f"✅ {name} 등록이 완료되었습니다!")
 
-@bot.command(name="욕")
-async def show_status(ctx):
-    data = load_data()
-    if not data:
-        await ctx.send("등록된 사용자가 없습니다. `!등록 <이름>`으로 먼저 등록해주세요.")
-        return
+@bot.command()
+async def 안녕(ctx):
+    await ctx.send(f"댕! 🐶")
 
-    sorted_data = sorted(data.items(), key=lambda x: x[1], reverse=True)
-    embed = discord.Embed(title="🚨 욕설 횟수 현황판 🚨", color=discord.Color.red())
-    
-    status_text = ""
-    for name, count in sorted_data:
-        status_text += f"**이름:** {name} | **횟수:** {count}회\n"
-        status_text += "----------------------------------\n"
-    
-    embed.description = status_text
-    top_user = sorted_data[0][0]
-    view = BadWordView(top_user)
-    
-    await ctx.send(content=f"가장 점수가 높은 **{top_user}**님에 대한 조절 버튼입니다:", embed=embed, view=view)
-
-# --- 서버장 전용 초기화 명령어 ---
-@bot.command(name="초기화")
-async def reset_data(ctx):
-    # 명령어를 입력한 사람이 서버장(Owner)인지 확인
-    if ctx.author == ctx.guild.owner:
-        save_data({}) # 빈 딕셔너리를 저장하여 데이터 삭제
-        await ctx.send("⚠️ 서버장에 의해 모든 욕설 데이터가 초기화되었습니다.")
-    else:
-        await ctx.send("❌ 이 명령어는 서버장만 사용할 수 있습니다.")
-
-# Render 환경 변수 설정 (보안 강화)
+# 3. 실제 실행 부분
 if __name__ == "__main__":
-    keep_alive()  # 가짜 웹 서버 실행
+    # 웹 서버를 먼저 실행하여 Render의 포트 체크를 통과시킵니다.
+    print("가짜 웹 서버를 시작합니다...")
+    keep_alive()
     
-    # Render의 Environment Variables에 등록한 이름을 가져옵니다.
-    token = os.environ.get('BOT_TOKEN') 
+    # Render의 Environment 메뉴에 등록한 'BOT_TOKEN'을 가져옵니다.
+    token = os.environ.get('BOT_TOKEN')
     
     if token:
-        bot.run(token)
+        print("토큰을 찾았습니다. 디스코드 연결을 시도합니다...")
+        try:
+            bot.run(token)
+        except Exception as e:
+            print(f"봇 실행 중 에러가 발생했습니다: {e}")
     else:
-        print("에러: BOT_TOKEN을 찾을 수 없습니다. Render 설정을 확인하세요!")
+        print("❌ 에러: Render 환경 변수(Environment)에 'BOT_TOKEN'이 설정되지 않았습니다.")
