@@ -102,5 +102,5 @@ async def reset_data(ctx):
         await ctx.send("❌ 이 명령어는 서버장만 사용할 수 있습니다.")
 
 # Render 환경 변수 설정 (보안 강화)
-token = os.environ.get('MTQzNzY5MzEzMTE4MDA4NTI1OQ.GnVajB.x4gQa5wC9OEVOOgPf1y7x1a1CMIAer4dN7slrM')
+token = os.environ.get('BOT_TOKEN')
 bot.run(token)
