@@ -121,6 +121,12 @@ async def reset_data(ctx):
 
 # Render 환경 변수 설정 (보안 강화)
 if __name__ == "__main__":
-    keep_alive()  # 웹 서버 먼저 실행
-    token = os.environ.get('BOT_TOKEN')
-    bot.run(token)
+    keep_alive()  # 가짜 웹 서버 실행
+    
+    # Render의 Environment Variables에 등록한 이름을 가져옵니다.
+    token = os.environ.get('BOT_TOKEN') 
+    
+    if token:
+        bot.run(token)
+    else:
+        print("에러: BOT_TOKEN을 찾을 수 없습니다. Render 설정을 확인하세요!")
