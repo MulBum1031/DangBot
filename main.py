@@ -1,4 +1,5 @@
 # 1. 맨 윗부분에 추가
+import os
 from flask import Flask
 from threading import Thread
 
@@ -15,7 +16,7 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-import os
+
 import discord
 from discord.ext import commands
 from discord.ui import Button, View
@@ -119,5 +120,7 @@ async def reset_data(ctx):
         await ctx.send("❌ 이 명령어는 서버장만 사용할 수 있습니다.")
 
 # Render 환경 변수 설정 (보안 강화)
-token = os.environ.get('BOT_TOKEN')
-bot.run(token)
+if __name__ == "__main__":
+    keep_alive()  # 웹 서버 먼저 실행
+    token = os.environ.get('BOT_TOKEN')
+    bot.run(token)
